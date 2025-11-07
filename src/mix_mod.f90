@@ -38,6 +38,7 @@
    
    ! ... and these variables
    PUBLIC  :: BCID
+   PUBLIC  :: OCID
    PUBLIC  :: DUSTID
    PUBLIC  :: RHID
    PUBLIC  :: LAMDAID
@@ -46,6 +47,7 @@
    PUBLIC  :: NLGNDR
    PUBLIC  :: OPT_SULF
    PUBLIC  :: OPT_BC
+   PUBLIC  :: OPT_OC
    PUBLIC  :: OPT_DUST
    PUBLIC  :: OPT_MIX
    PUBLIC  :: VBC
@@ -107,10 +109,12 @@
    
    TYPE (OPTICAL_GRID)   :: OPT_SULF
    TYPE (OPTICAL_GRID)   :: OPT_BC
+   TYPE (OPTICAL_GRID)   :: OPT_OC
    TYPE (OPTICAL_GRID)   :: OPT_DUST
    TYPE (OPTICAL_GRID)   :: OPT_MIX
    
    INTEGER               :: BCID
+   INTEGER               :: OCID
    INTEGER               :: DUSTID
    INTEGER               :: RHID
    INTEGER               :: LAMDAID
@@ -121,6 +125,9 @@
    REAL           :: NUMBC
    REAL           :: MOM2BC
    REAL           :: MOM3BC
+   REAL           :: NUMOC
+   REAL           :: MOM2OC
+   REAL           :: MOM3OC
    REAL           :: NUMDUST
    REAL           :: MOM2DUST
    REAL           :: MOM3DUST
@@ -130,12 +137,15 @@
    REAL, ALLOCATABLE    :: PK(:)
    
    REAL, ALLOCATABLE    :: VBC(:)
+   REAL, ALLOCATABLE    :: VOC(:)
+   REAL, ALLOCATABLE    :: OCBCRRATIO(:)
+   REAL, ALLOCATABLE    :: OCBCGF(:)
+   REAL, ALLOCATABLE    :: OCBCRHO(:)
+
    REAL, ALLOCATABLE    :: SULFBCRRATIO(:, :)
    REAL, ALLOCATABLE    :: SULFBCGF(:, :)
    REAL, ALLOCATABLE    :: SULFBCMGF(:, :)
    REAL, ALLOCATABLE    :: SULFBCRHO(:, :)
-   
-
     
    !=================================================================
    ! MODULE ROUTINES -- follow below the "CONTAINS" statement 
@@ -153,6 +163,7 @@
    USE NAMELIST_ARRAY_MOD, ONLY : DISTPAR      ! size distribution of BC and dust
    USE NAMELIST_ARRAY_MOD, ONLY : RMRI         ! Refractive indices of BC and dust
    USE NAMELIST_ARRAY_MOD, ONLY : BCRHO        ! density of BC
+   USE NAMELIST_ARRAY_MOD, ONLY : OCRHO        ! density of OC
    USE NAMELIST_ARRAY_MOD, ONLY : DUSTRHO      ! density of dust
    USE SPECTRA_MOD,        ONLY : NSPECTRA     ! number of wavelength
    USE SPECTRA_MOD,        ONLY : LAMDAS       ! wavelength
@@ -209,13 +220,35 @@
    WRITE (6, 110), '  Cext: ', OPT_BC%CEXT,  ', Csca: ', OPT_BC%CSCA
    WRITE (6, 110), '  MEXTEFFCY: ', OPT_BC%MEXTEFFCY , ', EXTEFFCY : ', OPT_BC%EXTEFFCY
    WRITE (6, 110), '  HBSCAT: ', OPT_BC%HBSCAT , ', EXTTOBCARATIO : ', OPT_BC%EXTTOBCARATIO
+   
+   ! Calculate OC Mie
+   WRITE (6, 100), '  ' 
+   WRITE (6, 100), '  - GET_OPTICAL: Calculate optical properties of OC...'
+   CALL SULF_STDMIE( DISTPAR(1,3), DISTPAR(2,3),                  & 
+				     DISTPAR(3,3), DISTPAR(4,3),                  &
+				     RMRI(1, 3),  RMRI(2, 3),                     &
+				     OCRHO,  CURRENTLAMDA,                        & 
+				     OPT_OC%REFF,       OPT_OC%VEFF,              &
+				     OPT_OC%AREA,       OPT_OC%VOLUME,            &
+				     OPT_OC%SSA,        OPT_OC%ASY,               &
+				     OPT_OC%CEXT,       OPT_OC%CSCA,              & 
+				     OPT_OC%MEXTEFFCY,  OPT_OC%EXTEFFCY,          &
+				     OPT_OC%HBScat,     OPT_OC%EXTToBCARatio,     &
+				     OPT_OC%PHASE,      OPT_OC%ANGLE,             &
+				     OPT_OC%LGNDR)
+   WRITE (6, 110), '  Reff: ', OPT_OC%REFF , ', Veff: ', OPT_OC%VEFF
+   WRITE (6, 110), '  Area: ', OPT_OC%AREA , ', Volm: ', OPT_OC%VOLUME
+   WRITE (6, 110), '  SSA : ', OPT_OC%SSA  , ', ASY : ', OPT_OC%ASY
+   WRITE (6, 110), '  Cext: ', OPT_OC%CEXT,  ', Csca: ', OPT_OC%CSCA
+   WRITE (6, 110), '  MEXTEFFCY: ', OPT_OC%MEXTEFFCY , ', EXTEFFCY : ', OPT_OC%EXTEFFCY
+   WRITE (6, 110), '  HBSCAT: ', OPT_OC%HBSCAT , ', EXTTOBCARATIO : ', OPT_OC%EXTTOBCARATIO
 					 
    ! Calculate DUST Mie
    WRITE (6, 100), '  ' 
    WRITE (6, 100), '  - GET_OPTICAL: Calculate optical properties of dust...'
-   CALL SULF_STDMIE( DISTPAR(1,3), DISTPAR(2,3),                   & 
-				     DISTPAR(3,3), DISTPAR(4,3),                   &
-				     RMRI(1, 3),  RMRI(2, 3),                      &
+   CALL SULF_STDMIE( DISTPAR(1,4), DISTPAR(2,4),                   & 
+				     DISTPAR(3,4), DISTPAR(4,4),                   &
+				     RMRI(1, 4),  RMRI(2, 4),                      &
 				     DUSTRHO,  CURRENTLAMDA,                       & 
 				     OPT_DUST%REFF,       OPT_DUST%VEFF,           &
 				     OPT_DUST%AREA,       OPT_DUST%VOLUME,         &
@@ -248,12 +281,17 @@
    ! References to F90 modules      
    USE NAMELIST_ARRAY_MOD, ONLY : DISTPAR ! size distribution of BC and dust
    USE NAMELIST_ARRAY_MOD, ONLY : NBC2SULF_MASS
+   USE NAMELIST_ARRAY_MOD, ONLY : NBC2OC_MASS
    USE NAMELIST_ARRAY_MOD, ONLY : BCRHO
+   USE NAMELIST_ARRAY_MOD, ONLY : OCRHO
    USE NAMELIST_ARRAY_MOD, ONLY : DUSTRHO
+   USE NAMELIST_ARRAY_MOD, ONLY : BC2OC_MASS
    USE NAMELIST_ARRAY_MOD, ONLY : BC2SULF_MASS
    USE NAMELIST_ARRAY_MOD, ONLY : DUST2ALL_MASS
    USE NAMELIST_ARRAY_MOD, ONLY : SULF_MASSRATIO_LST
    USE NAMELIST_ARRAY_MOD, ONLY : NSULF
+   USE NAMELIST_ARRAY_MOD, ONLY : LSULFATE_SHELL
+   USE NAMELIST_ARRAY_MOD, ONLY : LOC_SHELL   
    USE NAMELIST_ARRAY_MOD, ONLY : LEXTERNAL_MIX
    USE NAMELIST_ARRAY_MOD, ONLY : LINTERNAL_MIX
    USE SULFATE_MOD       , ONLY : DRYRHO
@@ -263,13 +301,16 @@
    REAL           :: DUSTMASSRATIO
    REAL           :: TOTALDRYMASS
    INTEGER        :: I
-  
-   ! I think we may simply the sum to 1
+   
+   !!! If sulfate is shell
+   IF (LSULFATE_SHELL) THEN
+   
+   ! I think we may simplify the mass of sulfate to 1
    ! here we get the dust mass
    DUSTMASSRATIO = DUST2ALL_MASS(DUSTID)/(1-DUST2ALL_MASS(DUSTID))* &
                    ( BC2SULF_MASS(BCID) + SUM(SULF_MASSRATIO_LST(1: NSULF)) ) 
    
-   ! Total dry mass
+   ! Total dry mass (BC + dust + sulfate)
    TOTALDRYMASS = BC2SULF_MASS(BCID) + DUSTMASSRATIO + SUM(SULF_MASSRATIO_LST(1: NSULF))
    
    ! sulfate
@@ -279,7 +320,7 @@
    CALL SIZE2NUM(DISTPAR(1, 2), DISTPAR(2, 2), BCRHO, BC2SULF_MASS(BCID), 'BC', NUMBC, MOM2BC, MOM3BC)
    
    ! Dust
-   CALL SIZE2NUM(DISTPAR(1, 3), DISTPAR(2, 3), DUSTRHO, DUSTMASSRATIO, 'Dust', NUMDUST, MOM2DUST, MOM3DUST)
+   CALL SIZE2NUM(DISTPAR(1, 4), DISTPAR(2, 4), DUSTRHO, DUSTMASSRATIO, 'Dust', NUMDUST, MOM2DUST, MOM3DUST)
 
    IF (LINTERNAL_MIX) THEN
       CALL MIX_INTERNAL
@@ -287,6 +328,36 @@
 
    IF (LEXTERNAL_MIX) THEN
       CALL MIX_EXTERNAL
+   ENDIF   
+      
+   !!! If OC is shell
+   ELSEIF (LOC_SHELL) THEN
+   
+   ! I think we may simplify the mass of OC to 1
+   ! here we get the dust mass
+   DUSTMASSRATIO = DUST2ALL_MASS(DUSTID)/(1-DUST2ALL_MASS(DUSTID))* &
+                   ( BC2OC_MASS(BCID) + 1 ) 
+   
+   ! Total dry mass (BC + dust + OC)
+   TOTALDRYMASS = BC2OC_MASS(BCID) + DUSTMASSRATIO + 1
+   
+   ! OC
+   CALL SIZE2NUM(DISTPAR(1, 3), DISTPAR(2, 3), OCRHO, 1., 'OC', NUMOC, MOM2OC, MOM3OC)
+   
+   ! BC
+   CALL SIZE2NUM(DISTPAR(1, 2), DISTPAR(2, 2), BCRHO, BC2OC_MASS(BCID), 'BC', NUMBC, MOM2BC, MOM3BC)
+   
+   ! Dust
+   CALL SIZE2NUM(DISTPAR(1, 4), DISTPAR(2, 4), DUSTRHO, DUSTMASSRATIO, 'Dust', NUMDUST, MOM2DUST, MOM3DUST)
+
+   IF (LINTERNAL_MIX) THEN
+      CALL MIX_INTERNAL
+   ENDIF
+
+   IF (LEXTERNAL_MIX) THEN
+      CALL MIX_EXTERNAL
+   ENDIF   
+   
    ENDIF   
    
    END SUBROUTINE MIXING
@@ -300,20 +371,28 @@
    USE NAMELIST_ARRAY_MOD, ONLY : DISTPAR
    USE NAMELIST_ARRAY_MOD, ONLY : RMRI
    USE NAMELIST_ARRAY_MOD, ONLY : BCRHO
+   USE NAMELIST_ARRAY_MOD, ONLY : OCRHO
    USE NAMELIST_ARRAY_MOD, ONLY : DUSTRHO
+   USE NAMELIST_ARRAY_MOD, ONLY : LSULFATE_SHELL
+   USE NAMELIST_ARRAY_MOD, ONLY : LOC_SHELL   
    USE SPECTRA_MOD,        ONLY : NSPECTRA
    USE SPECTRA_MOD,        ONLY : LAMDAS
    USE SULFATE_MOD,        ONLY : COMPOSITENR
    USE SULFATE_MOD,        ONLY : AVGGROWTH
    USE SULFATE_MOD,        ONLY : AVGWETSULFRHO
+
        
    REAL              :: CURRENTLAMDA
    REAL              :: TMPSULFBCRRATIO
+   REAL              :: TMPOCBCRRATIO
 
    REAL              :: ceflgn
    INTEGER           :: I
    
    CURRENTLAMDA = LAMDAS(LAMDAID) / 1000.0
+   
+   ! if sulfate is shell
+   IF (LSULFATE_SHELL) THEN
    
    TMPSULFBCRRATIO = SULFBCRRATIO(BCID, RHID)
    IF ( TMPSULFBCRRATIO .lt. 0.0001 ) THEN
@@ -374,24 +453,87 @@
    ENDDO 
 
    WRITE (6, 100), '  - MIX_INTERNAL: Then external mixing with dust...'
-   
    WRITE (6, 110), '  Reff     : ', CSMIXINGREFF
    WRITE (6, 110), '  Cext     : ', CSMIXINGCEXT
    WRITE (6, 110), '  SSA      : ', CSMIXINGSSA
-   
    WRITE (6, 110), '  OPT_MIX%CSCA      : ', OPT_MIX%CSCA
-   
    WRITE (6, 110), '  NUMSULF      : ', NUMSULF
-   
    WRITE (6, 110), '  OPT_DUST%CSCA      : ', NUMDUST
-   
    WRITE (6, 110), '  NUMDUST      : ', NUMDUST
-   
    WRITE (6, 110), '  CSMIXINGPHASE 1      : ', CSMIXINGPHASE(1)
    WRITE (6, 110), '  CSMIXINGPHASE 100    : ', CSMIXINGPHASE(100)
    WRITE (6, 110), '  CSMIXINGPHASE 1000   : ', CSMIXINGPHASE(1000)
 
+   ! if OC is shell
+   ELSEIF (LOC_SHELL) THEN
+   
+   TMPOCBCRRATIO = OCBCRRATIO(BCID)
+   IF ( TMPOCBCRRATIO .lt. 0.0001 ) THEN
+      TMPOCBCRRATIO = 0.0001
+   ENDIF
+   
+   WRITE (6, 100), '  ' 
+   WRITE (6, 100), '  - MIX_INTERNAL: Calculate optical properties of internal mixing (BC/OC)...'
+   CALL CORE_SHELL(CURRENTLAMDA, NANG, NLGNDR,                         &
+                   DISTPAR(1,3)* OCBCGF(BCID), DISTPAR(2,3),           & 
+                   RMRI(1, 3),  RMRI(2, 3),                            &
+                   RMRI(1, 2),  RMRI(2, 2),                            &
+                   TMPOCBCRRATIO,  OCBCRHO(BCID),                      &
+                   OPT_MIX%REFF,       OPT_MIX%VEFF,                   &
+                   OPT_MIX%AREA,       OPT_MIX%VOLUME,                 &
+                   OPT_MIX%SSA,        OPT_MIX%ASY,                    &
+                   OPT_MIX%CEXT,       OPT_MIX%CSCA,                   & 
+                   OPT_MIX%MEXTEFFCY,  OPT_MIX%EXTEFFCY,               &
+                   OPT_MIX%HBSCAT,     OPT_MIX%EXTTOBCARATIO,          &
+                   OPT_MIX%PHASE,      OPT_MIX%ANGLE,                  &
+                   OPT_MIX%LGNDR)                   
+   WRITE (6, 110), '  CURRENTLAMDA     : ', CURRENTLAMDA      , ', NANG          : ', NANG
+   WRITE (6, 110), '  Rg     : ', DISTPAR(1,3)* OCBCGF(BCID)      , ', Sg         : ', DISTPAR(2,3)
+   WRITE (6, 110), '  RMRI(1, 2)     : ', RMRI(1, 2)      , ', RMRI(2, 2)          : ', RMRI(2, 2)
+   WRITE (6, 110), '  RMRI(1, 3)     : ', RMRI(1, 3)      , ', RMRI(2, 3)          : ', RMRI(2, 3)
+   WRITE (6, 110), '  TMPOCBCRRATIO     : ', TMPOCBCRRATIO      , ', OCBCRHO         : ', OCBCRHO(BCID)
+   print *, '--------'
+   WRITE (6, 110), '  Reff     : ', OPT_MIX%REFF      , ', Veff          : ', OPT_MIX%VEFF
+   WRITE (6, 110), '  Area     : ', OPT_MIX%AREA      , ', Volm          : ', OPT_MIX%VOLUME
+   WRITE (6, 110), '  SSA      : ', OPT_MIX%SSA       , ', ASY           : ', OPT_MIX%ASY
+   WRITE (6, 110), '  Cext     : ', OPT_MIX%CEXT      , ', Csca          : ', OPT_MIX%CSCA
+   WRITE (6, 110), '  MEXTEFFCY: ', OPT_MIX%MEXTEFFCY , ', EXTEFFCY      : ', OPT_MIX%EXTEFFCY
+   WRITE (6, 110), '  HBSCAT   : ', OPT_MIX%HBSCAT    , ', EXTTOBCARATIO : ', OPT_MIX%EXTTOBCARATIO
 
+   ! external mixing with dust
+   CSTOTALNUM = NUMOC + NUMDUST
+   CSMIXINGCEXT = (OPT_MIX%CEXT * NUMOC + OPT_DUST%CEXT * NUMDUST) / &
+                  CSTOTALNUM
+   
+   CSMIXINGSSA = (OPT_DUST%CEXT * NUMDUST * OPT_DUST%SSA + &
+                  OPT_MIX%CEXT * NUMOC * OPT_MIX%SSA)  / &
+                 (CSMIXINGCEXT * CSTOTALNUM)
+   
+   CSMIXINGPHASE(1:NANG) = ( OPT_MIX%CSCA  * NUMOC * OPT_MIX%PHASE(1:NANG)    +      & 
+                             OPT_DUST%CSCA * NUMDUST * OPT_DUST%PHASE(1:NANG) ) /    & 
+                           ( OPT_DUST%CSCA * NUMDUST + OPT_MIX%CSCA * NUMOC)
+
+   CSMIXINGREFF = (NUMDUST * MOM3DUST + NUMOC * MOM3OC * OCBCGF(BCID)**3) / &
+                  (NUMDUST * MOM2DUST + NUMOC * MOM2OC * OCBCGF(BCID)**2) 
+
+   DO I = 0, NLGNDR 
+      CSMIXINGLGNDR(I) = ceflgn( NANG, CSMIXINGPHASE, QWT, I, PLGNDR(1,I) )
+   ENDDO 
+
+   WRITE (6, 100), '  - MIX_INTERNAL: Then external mixing with dust...'
+   WRITE (6, 110), '  Reff     : ', CSMIXINGREFF
+   WRITE (6, 110), '  Cext     : ', CSMIXINGCEXT
+   WRITE (6, 110), '  SSA      : ', CSMIXINGSSA
+   WRITE (6, 110), '  OPT_MIX%CSCA      : ', OPT_MIX%CSCA
+   WRITE (6, 110), '  NUMOC      : ', NUMOC
+   WRITE (6, 110), '  OPT_DUST%CSCA      : ', NUMDUST
+   WRITE (6, 110), '  NUMDUST      : ', NUMDUST
+   WRITE (6, 110), '  CSMIXINGPHASE 1      : ', CSMIXINGPHASE(1)
+   WRITE (6, 110), '  CSMIXINGPHASE 100    : ', CSMIXINGPHASE(100)
+   WRITE (6, 110), '  CSMIXINGPHASE 1000   : ', CSMIXINGPHASE(1000)
+   
+   ENDIF
+   
    END SUBROUTINE MIX_INTERNAL
 !------------------------------------------------------------------------------   
    
@@ -401,10 +543,14 @@
    ! state
    !=================================================================   
    USE SULFATE_MOD,        ONLY : AVGGROWTH
-   
+   USE NAMELIST_ARRAY_MOD, ONLY : LSULFATE_SHELL
+   USE NAMELIST_ARRAY_MOD, ONLY : LOC_SHELL
+      
    REAL              :: ceflgn
    INTEGER           :: I
    
+   ! if we consider sulfate and not OC
+   IF (LSULFATE_SHELL) THEN
      
    TOTALNUM = NUMBC + NUMDUST + NUMSULF
    
@@ -423,6 +569,30 @@
 
    MIXINGREFF = ( NUMBC * MOM3BC + NUMDUST * MOM3DUST + NUMSULF * MOM3SULF * AVGGROWTH(RHID)**3) / &
                 ( NUMBC * MOM2BC + NUMDUST * MOM2DUST + NUMSULF * MOM2SULF * AVGGROWTH(RHID)**2) 
+
+   ! if we consider OC and not sulfate   
+   ELSEIF (LOC_SHELL) THEN
+     
+   TOTALNUM = NUMBC + NUMDUST + NUMOC
+   
+   MIXINGCEXT = ( OPT_BC%CEXT * NUMBC + OPT_DUST%CEXT * NUMDUST + &
+                  OPT_OC%CEXT * NUMOC ) / TOTALNUM
+
+   MIXINGSSA = ( OPT_BC%CEXT   * NUMBC   * OPT_BC%SSA     + &
+                 OPT_DUST%CEXT * NUMDUST * OPT_DUST%SSA   + &
+                 OPT_OC%CEXT * NUMOC * OPT_OC%SSA ) / & 
+               (MIXINGCEXT * TOTALNUM)
+   
+   MIXINGPHASE(1:nang) = (OPT_BC%CSCA   * NUMBC   * OPT_BC%PHASE(1:NANG)     + &
+                          OPT_DUST%CSCA * NUMDUST * OPT_DUST%PHASE(1:NANG)   + &
+                          OPT_OC%CSCA * NUMOC * OPT_OC%PHASE(1:NANG))  / &
+                         (OPT_BC%CSCA * NUMBC + OPT_DUST%CSCA * NUMDUST + OPT_OC%CSCA * NUMOC) 
+
+   MIXINGREFF = ( NUMBC * MOM3BC + NUMDUST * MOM3DUST + NUMOC * MOM3OC ) / &
+                ( NUMBC * MOM2BC + NUMDUST * MOM2DUST + NUMOC * MOM2OC ) 
+   
+   ENDIF    
+
                 
    DO I = 0, NLGNDR 
       MIXINGLGNDR(I) = ceflgn( NANG, MIXINGPHASE, QWT, I, PLGNDR(1,I) )
@@ -478,10 +648,15 @@
 !------------------------------------------------------------------------------
 
    SUBROUTINE GET_MIX_DENSITY
-   
+
+   USE NAMELIST_ARRAY_MOD, ONLY : LSULFATE_SHELL
+   USE NAMELIST_ARRAY_MOD, ONLY : LOC_SHELL
    USE NAMELIST_ARRAY_MOD, ONLY : BC2SULF_MASS
    USE NAMELIST_ARRAY_MOD, ONLY : NBC2SULF_MASS
+   USE NAMELIST_ARRAY_MOD, ONLY : BC2OC_MASS
+   USE NAMELIST_ARRAY_MOD, ONLY : NBC2OC_MASS   
    USE NAMELIST_ARRAY_MOD, ONLY : BCRHO
+   USE NAMELIST_ARRAY_MOD, ONLY : OCRHO
    USE NAMELIST_ARRAY_MOD, ONLY : NRH_LST
    USE NAMELIST_ARRAY_MOD, ONLY : RH_LST
    USE SULFATE_MOD,        ONLY : DRYV_SULF
@@ -491,14 +666,17 @@
 
    INTEGER            :: I, J
 
+   ! if sulfate is shell
+   IF (LSULFATE_SHELL) THEN
+
    ALLOCATE( VBC( NBC2SULF_MASS ) )
    ALLOCATE( SULFBCRRATIO( NBC2SULF_MASS, NRH_LST) )
    ALLOCATE( SULFBCGF( NBC2SULF_MASS, NRH_LST ) )
    ALLOCATE( SULFBCMGF( NBC2SULF_MASS, NRH_LST ) )
    ALLOCATE( SULFBCRHO( NBC2SULF_MASS, NRH_LST ) )
-
+      
    DO I = 1, NBC2SULF_MASS
-   	  
+   
       VBC(I) =  BC2SULF_MASS(I) / BCRHO 
       
       DO J = 1, NRH_LST
@@ -526,6 +704,36 @@
    WRITE (6, 170), '  Mixing mass growth factor:' , SULFBCMGF(1, 1:2), ' ...', SULFBCMGF(1, NRH_LST-1:NRH_LST)
    WRITE (6, 180) ' ...'
    WRITE (6, 170), '  Mixing mass growth factor:' , SULFBCMGF(NBC2SULF_MASS, 1:2), ' ...', SULFBCMGF(NBC2SULF_MASS, NRH_LST-1:NRH_LST)
+   
+   ! if OC is shell
+   ELSEIF (LOC_SHELL) THEN
+   
+   ALLOCATE( VBC( NBC2OC_MASS ) )
+   ALLOCATE( VOC( NBC2OC_MASS ) )
+   ALLOCATE( OCBCRRATIO( NBC2OC_MASS ) )
+   ALLOCATE( OCBCGF( NBC2OC_MASS ) )
+   ALLOCATE( OCBCRHO( NBC2OC_MASS ) )
+
+   DO I = 1, NBC2OC_MASS
+   	  
+      VBC(I) =  BC2OC_MASS(I) / BCRHO 
+      VOC(I) =  1 / OCRHO
+      
+      OCBCRRATIO(I) = (VBC(I)/(VOC(I)+VBC(I)))**(1./3.) 
+      OCBCGF(I) = ( (VBC(I) + VOC(I))/ VOC(I) )**(1./3.) 
+      OCBCRHO(I) = (BC2OC_MASS(I)+ 1 )/(VBC(I)+ VOC(I))
+      
+   END DO   
+
+   WRITE (6, 100), '  - GET_MIX_DENSITY: Calculate OC & BC mixing ...'
+   WRITE (6, 170) '  BC to OC mass ratio :', BC2OC_MASS(1:2), ' ...', BC2OC_MASS(NBC2OC_MASS-1:NBC2OC_MASS)
+   
+   WRITE (6, 170), '  Mixing growth factor:' , OCBCGF(1:2), ' ...', OCBCGF(NBC2OC_MASS-1:NBC2OC_MASS)
+   WRITE (6, 180) ' ...'
+   WRITE (6, 170), '  Mixing density:' , OCBCRHO(1:2), ' ...', OCBCRHO(NBC2OC_MASS-1:NBC2OC_MASS)
+   WRITE (6, 180) ' ...'
+   
+   ENDIF   
    
    100 FORMAT (A, A)
    110 FORMAT (2X, A, F16.6)

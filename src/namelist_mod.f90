@@ -397,9 +397,13 @@
    ! References to F90 modules
    USE NAMELIST_ARRAY_MOD, ONLY : LEXTERNAL_MIX
    USE NAMELIST_ARRAY_MOD, ONLY : LINTERNAL_MIX   
+   USE NAMELIST_ARRAY_MOD, ONLY : LOC_SHELL
+   USE NAMELIST_ARRAY_MOD, ONLY : LSULFATE_SHELL
 !    USE NAMELIST_ARRAY_MOD, ONLY : MASS_RATIO
    USE NAMELIST_ARRAY_MOD, ONLY : BC2SULF_MASS
    USE NAMELIST_ARRAY_MOD, ONLY : NBC2SULF_MASS
+   USE NAMELIST_ARRAY_MOD, ONLY : BC2OC_MASS
+   USE NAMELIST_ARRAY_MOD, ONLY : NBC2OC_MASS
    USE NAMELIST_ARRAY_MOD, ONLY : DUST2ALL_MASS
    USE NAMELIST_ARRAY_MOD, ONLY : NDUST2ALL_MASS
    USE NAMELIST_ARRAY_MOD, ONLY : RMRI
@@ -409,6 +413,7 @@
    USE NAMELIST_ARRAY_MOD, ONLY : SULF_MASSRATIO_LST
    USE NAMELIST_ARRAY_MOD, ONLY : DISTPAR
    USE NAMELIST_ARRAY_MOD, ONLY : BCRHO
+   USE NAMELIST_ARRAY_MOD, ONLY : OCRHO
    USE NAMELIST_ARRAY_MOD, ONLY : DUSTRHO
    !USE NAMELIST_ARRAY_MOD, ONLY : N_MASS_RATIO
 
@@ -428,18 +433,31 @@
    ! LEXTERNAL_MIX
     CALL SPLIT_ONE_LINE( SUBSTRS, N, 1, 'read_aerosol_menu:0' )
     READ( SUBSTRS(1:N), * ) LEXTERNAL_MIX
-
+    
    ! LINTERNAL_MIX
    CALL SPLIT_ONE_LINE( SUBSTRS, N, 1, 'read_aerosol_menu:1' )
    READ( SUBSTRS(1:N), * ) LINTERNAL_MIX
    
+   ! LSULFATE_SHELL
+    CALL SPLIT_ONE_LINE( SUBSTRS, N, 1, 'read_aerosol_menu:2' )
+    READ( SUBSTRS(1:N), * ) LSULFATE_SHELL
+
+   ! LOC_SHELL
+   CALL SPLIT_ONE_LINE( SUBSTRS, N, 1, 'read_aerosol_menu:3' )
+   READ( SUBSTRS(1:N), * ) LOC_SHELL
+   
    ! BC to sulfate mass ratio
-   CALL SPLIT_ONE_LINE( SUBSTRS, N, -1, 'read_aerosol_menu:s1' )
+   CALL SPLIT_ONE_LINE( SUBSTRS, N, -1, 'read_aerosol_menu:4' )
    NBC2SULF_MASS = MIN( N, 99 )
    READ( SUBSTRS(1:NBC2SULF_MASS), * ) BC2SULF_MASS(1:NBC2SULF_MASS) 
    
+   ! BC to OC mass ratio
+   CALL SPLIT_ONE_LINE( SUBSTRS, N, -1, 'read_aerosol_menu:5' )
+   NBC2OC_MASS = MIN( N, 99 )
+   READ( SUBSTRS(1:NBC2OC_MASS), * ) BC2OC_MASS(1:NBC2OC_MASS) 
+   
    ! dust to all mass ratio
-   CALL SPLIT_ONE_LINE( SUBSTRS, N, -1, 'read_aerosol_menu:s1' )
+   CALL SPLIT_ONE_LINE( SUBSTRS, N, -1, 'read_aerosol_menu:6' )
    NDUST2ALL_MASS = MIN( N, 99 )
    READ( SUBSTRS(1:NDUST2ALL_MASS), * ) DUST2ALL_MASS(1:NDUST2ALL_MASS)
 
@@ -449,43 +467,16 @@
    CALL SPLIT_ONE_LINE( SUBSTRS, N, -1, 'read_aerosol_menu:s1' )   
    
    ! ID
-   CALL SPLIT_ONE_LINE( SUBSTRS, N, -1, 'read_aerosol_menu:3' )
+   CALL SPLIT_ONE_LINE( SUBSTRS, N, -1, 'read_aerosol_menu:s2' )
    NSULF = MIN( N, 99 )
    READ( SUBSTRS(1:NSULF), * ) SULFID_LST(1:NSULF)
 
-   CALL SPLIT_ONE_LINE( SUBSTRS, N, -1, 'read_aerosol_menu:4' )
+   CALL SPLIT_ONE_LINE( SUBSTRS, N, -1, 'read_aerosol_menu:s3' )
    NSULFMASSRATIO = MIN( N, 99 )
    READ( SUBSTRS(1:NSULFMASSRATIO), * ) SULF_MASSRATIO_LST(1:NSULF)
 
    ! Size range
-   CALL SPLIT_ONE_LINE( SUBSTRS, N, 2, 'read_aerosol_menu:5' )
-   READ( SUBSTRS(1), * ) DISTPAR(3, IMODE)
-   READ( SUBSTRS(2), * ) DISTPAR(4, IMODE)
-   
-   ! Separator line
-   CALL SPLIT_ONE_LINE( SUBSTRS, N, -1, 'read_aerosol_menu:s2' )
-   
-   ! Rg Sigma_g
-   CALL SPLIT_ONE_LINE( SUBSTRS, N, 2, 'read_aerosol_menu:7' )
-   READ( SUBSTRS(1), * ) DISTPAR(1, IMODE)
-   READ( SUBSTRS(2), * ) DISTPAR(2, IMODE)
-
-   ! BC # 2
-   IMODE = 2   
-   ! Separator line
-   CALL SPLIT_ONE_LINE( SUBSTRS, N, -1, 'read_aerosol_menu:s3' )   
-   
-   ! density
-   CALL SPLIT_ONE_LINE( SUBSTRS, N, 1, 'read_aerosol_menu:8' )
-   READ( SUBSTRS(1), * ) BCRHO
-      
-   ! RMRI
-   CALL SPLIT_ONE_LINE( SUBSTRS, N, 2, 'read_aerosol_menu:8' )
-   READ( SUBSTRS(1), * ) RMRI(1, IMODE)
-   READ( SUBSTRS(2), * ) RMRI(2, IMODE)
-
-   ! Size range
-   CALL SPLIT_ONE_LINE( SUBSTRS, N, 2, 'read_aerosol_menu:9' )
+   CALL SPLIT_ONE_LINE( SUBSTRS, N, 2, 'read_aerosol_menu:s4' )
    READ( SUBSTRS(1), * ) DISTPAR(3, IMODE)
    READ( SUBSTRS(2), * ) DISTPAR(4, IMODE)
    
@@ -493,47 +484,105 @@
    CALL SPLIT_ONE_LINE( SUBSTRS, N, -1, 'read_aerosol_menu:s5' )
    
    ! Rg Sigma_g
-   CALL SPLIT_ONE_LINE( SUBSTRS, N, 2, 'read_aerosol_menu:10' )
+   CALL SPLIT_ONE_LINE( SUBSTRS, N, 2, 'read_aerosol_menu:s6' )
    READ( SUBSTRS(1), * ) DISTPAR(1, IMODE)
    READ( SUBSTRS(2), * ) DISTPAR(2, IMODE)
 
-   ! Dust # 3 
-   IMODE = 3   
+   ! BC # 2
+   IMODE = 2   
    ! Separator line
-   CALL SPLIT_ONE_LINE( SUBSTRS, N, -1, 'read_aerosol_menu:s6' )  
-    
-   ! density
-   CALL SPLIT_ONE_LINE( SUBSTRS, N, 1, 'read_aerosol_menu:8' )
-   READ( SUBSTRS(1), * ) DUSTRHO
+   CALL SPLIT_ONE_LINE( SUBSTRS, N, -1, 'read_aerosol_menu:b1' )   
    
+   ! density
+   CALL SPLIT_ONE_LINE( SUBSTRS, N, 1, 'read_aerosol_menu:b2' )
+   READ( SUBSTRS(1), * ) BCRHO
+      
    ! RMRI
-   CALL SPLIT_ONE_LINE( SUBSTRS, N, 2, 'read_aerosol_menu:11' )
+   CALL SPLIT_ONE_LINE( SUBSTRS, N, 2, 'read_aerosol_menu:b3' )
    READ( SUBSTRS(1), * ) RMRI(1, IMODE)
    READ( SUBSTRS(2), * ) RMRI(2, IMODE)
 
    ! Size range
-   CALL SPLIT_ONE_LINE( SUBSTRS, N, 2, 'read_aerosol_menu:12' )
+   CALL SPLIT_ONE_LINE( SUBSTRS, N, 2, 'read_aerosol_menu:b4' )
    READ( SUBSTRS(1), * ) DISTPAR(3, IMODE)
    READ( SUBSTRS(2), * ) DISTPAR(4, IMODE)
    
    ! Separator line
-   CALL SPLIT_ONE_LINE( SUBSTRS, N, -1, 'read_aerosol_menu:s7' )  
+   CALL SPLIT_ONE_LINE( SUBSTRS, N, -1, 'read_aerosol_menu:b5' )
+   
+   ! Rg Sigma_g
+   CALL SPLIT_ONE_LINE( SUBSTRS, N, 2, 'read_aerosol_menu:b6' )
+   READ( SUBSTRS(1), * ) DISTPAR(1, IMODE)
+   READ( SUBSTRS(2), * ) DISTPAR(2, IMODE)
+   
+   ! OC # 3
+   IMODE = 3  
+   ! Separator line
+   CALL SPLIT_ONE_LINE( SUBSTRS, N, -1, 'read_aerosol_menu:o1' )   
+   
+   ! density
+   CALL SPLIT_ONE_LINE( SUBSTRS, N, 1, 'read_aerosol_menu:o2' )
+   READ( SUBSTRS(1), * ) OCRHO
+      
+   ! RMRI
+   CALL SPLIT_ONE_LINE( SUBSTRS, N, 2, 'read_aerosol_menu:o3' )
+   READ( SUBSTRS(1), * ) RMRI(1, IMODE)
+   READ( SUBSTRS(2), * ) RMRI(2, IMODE)
+
+   ! Size range
+   CALL SPLIT_ONE_LINE( SUBSTRS, N, 2, 'read_aerosol_menu:o4' )
+   READ( SUBSTRS(1), * ) DISTPAR(3, IMODE)
+   READ( SUBSTRS(2), * ) DISTPAR(4, IMODE)
+   
+   ! Separator line
+   CALL SPLIT_ONE_LINE( SUBSTRS, N, -1, 'read_aerosol_menu:o5' )
+   
+   ! Rg Sigma_g
+   CALL SPLIT_ONE_LINE( SUBSTRS, N, 2, 'read_aerosol_menu:o6' )
+   READ( SUBSTRS(1), * ) DISTPAR(1, IMODE)
+   READ( SUBSTRS(2), * ) DISTPAR(2, IMODE)
+
+   ! Dust # 4
+   IMODE = 4  
+   ! Separator line
+   CALL SPLIT_ONE_LINE( SUBSTRS, N, -1, 'read_aerosol_menu:d1' )  
+    
+   ! density
+   CALL SPLIT_ONE_LINE( SUBSTRS, N, 1, 'read_aerosol_menu:d2' )
+   READ( SUBSTRS(1), * ) DUSTRHO
+   
+   ! RMRI
+   CALL SPLIT_ONE_LINE( SUBSTRS, N, 2, 'read_aerosol_menu:d3' )
+   READ( SUBSTRS(1), * ) RMRI(1, IMODE)
+   READ( SUBSTRS(2), * ) RMRI(2, IMODE)
+
+   ! Size range
+   CALL SPLIT_ONE_LINE( SUBSTRS, N, 2, 'read_aerosol_menu:d4' )
+   READ( SUBSTRS(1), * ) DISTPAR(3, IMODE)
+   READ( SUBSTRS(2), * ) DISTPAR(4, IMODE)
+   
+   ! Separator line
+   CALL SPLIT_ONE_LINE( SUBSTRS, N, -1, 'read_aerosol_menu:d5' )  
 
    ! Rg Sigma_g
-   CALL SPLIT_ONE_LINE( SUBSTRS, N, 2, 'read_aerosol_menu:13' )
+   CALL SPLIT_ONE_LINE( SUBSTRS, N, 2, 'read_aerosol_menu:d6' )
    READ( SUBSTRS(1), * ) DISTPAR(1, IMODE)
    READ( SUBSTRS(2), * ) DISTPAR(2, IMODE)
 
    ! Separator line
-   CALL SPLIT_ONE_LINE( SUBSTRS, N, 1, 'read_aerosol_menu:14' )
+   CALL SPLIT_ONE_LINE( SUBSTRS, N, 1, 'read_aerosol_menu:d7' )
    
    WRITE( 6, 150 ) '' 
    WRITE( 6, 150 ) 'AEROSOL MENU:' 
    WRITE( 6, 150 ) REPEAT( '-', 48 )
    WRITE( 6, 130 ) 'External Mix?           :', LEXTERNAL_MIX
    WRITE( 6, 130 ) 'Internal Mix?           :', LINTERNAL_MIX
+   WRITE( 6, 130 ) 'Sulfate Shell?          :', LSULFATE_SHELL
+   WRITE( 6, 130 ) 'OC Shell?               :', LOC_SHELL
    WRITE( 6, 100 ) 'BC/Sulfate Mass Ratio   :', BC2SULF_MASS(1), &
                                                 BC2SULF_MASS(NBC2SULF_MASS) 
+   WRITE( 6, 100 ) 'BC/OC Mass Ratio        :', BC2OC_MASS(1), &
+                                                BC2OC_MASS(NBC2OC_MASS) 
    WRITE( 6, 100 ) 'Dust/All Mass Ratio     :', DUST2ALL_MASS(1),&
                                                 DUST2ALL_MASS(NDUST2ALL_MASS)
    WRITE( 6, 150 ) 'Sulf #1 Properties      :'
@@ -549,12 +598,18 @@
    WRITE( 6, 100 ) '  - size range [um]     :', DISTPAR(3, 2), DISTPAR(4, 2)
    WRITE( 6, 150 ) '  - size distribution   : PAR(1)    PAR(2)'
    WRITE( 6, 100 ) '             ==> Entries:', DISTPAR(1, 2), DISTPAR(2, 2) 
-   WRITE( 6, 150 ) 'Dust #3 Properties      :'
-   WRITE( 6, 100 ) '  - density             :', DUSTRHO
+   WRITE( 6, 150 ) 'OC #3 Properties        :'
+   WRITE( 6, 100 ) '  - density             :', OCRHO
    WRITE( 6, 100 ) '  - refractive index    :', RMRI(1, 3), RMRI(2, 3)
    WRITE( 6, 100 ) '  - size range [um]     :', DISTPAR(3, 3), DISTPAR(4, 3)
    WRITE( 6, 150 ) '  - size distribution   : PAR(1)    PAR(2)'
-   WRITE( 6, 100 ) '             ==> Entries:', DISTPAR(1, 3), DISTPAR(2, 3)   
+   WRITE( 6, 100 ) '             ==> Entries:', DISTPAR(1, 3), DISTPAR(2, 3)    
+   WRITE( 6, 150 ) 'Dust #4 Properties      :'
+   WRITE( 6, 100 ) '  - density             :', DUSTRHO
+   WRITE( 6, 100 ) '  - refractive index    :', RMRI(1, 4), RMRI(2, 4)
+   WRITE( 6, 100 ) '  - size range [um]     :', DISTPAR(3, 4), DISTPAR(4, 4)
+   WRITE( 6, 150 ) '  - size distribution   : PAR(1)    PAR(2)'
+   WRITE( 6, 100 ) '             ==> Entries:', DISTPAR(1, 4), DISTPAR(2, 4)   
    100  FORMAT(5X, A, 2F8.3 )     
    110  FORMAT(5X, A, 2I5   )
    120  FORMAT(5X, A, A     )
