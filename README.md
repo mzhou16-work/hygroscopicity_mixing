@@ -1,6 +1,6 @@
 # UI Aerosol Hygroscopicity and Mixing State Package
 
-**Authors:** Meng Zhou, Jun Wang  
+**Authors:** Meng Zhou, Weizhi Deng, Jun Wang
 **Initial release:** January 2020  
 
 This package computes the hygroscopic growth, mixing state, and optical properties of aerosol populations under varying humidity and composition. It links aerosol microphysical properties (size distribution, composition, density, refractive index) to bulk optical quantities such as extinction, single-scattering albedo, asymmetry factor, and phase function.

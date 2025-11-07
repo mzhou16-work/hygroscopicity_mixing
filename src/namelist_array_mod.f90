@@ -27,19 +27,25 @@
    ! AEROSOL
    LOGICAL			   :: LEXTERNAL_MIX
    LOGICAL			   :: LINTERNAL_MIX
+   LOGICAL             :: LSULFATE_SHELL
+   LOGICAL             :: LOC_SHELL
+   
 !    REAL                :: MASS_RATIO(2)
    REAL                :: BC2SULF_MASS(99)
    INTEGER             :: NBC2SULF_MASS
+   REAL                :: BC2OC_MASS(99)
+   INTEGER             :: NBC2OC_MASS   
    REAL                :: DUST2ALL_MASS(99)
    INTEGER             :: NDUST2ALL_MASS
    REAL                :: BCRHO
+   REAL                :: OCRHO
    REAL                :: DUSTRHO
-   REAL                :: RMRI(2,3)
+   REAL                :: RMRI(2,4)
    INTEGER             :: NSULF
    INTEGER             :: SULFID_LST(99)
    REAL                :: SULF_MASSRATIO_LST(99)
    INTEGER             :: NSULFMASSRATIO
-   REAL                :: DISTPAR(4,3)
+   REAL                :: DISTPAR(4,4)
    
    
    ! DIAGNOSTIC MENU

@@ -50,6 +50,7 @@ MODULE DIAG_MOD
   INTEGER                     :: DIM_RH
   INTEGER                     :: DIM_SULF
   INTEGER                     :: DIM_BC2SULF
+  INTEGER                     :: DIM_BC2OC
   INTEGER                     :: DIM_DUST2ALL
   INTEGER                     :: DIM_ANG
   INTEGER                     :: DIM_LGNDR
@@ -174,6 +175,7 @@ MODULE DIAG_MOD
    USE NAMELIST_ARRAY_MOD,   ONLY : NRH_LST
    USE NAMELIST_ARRAY_MOD,   ONLY : NSULF
    USE NAMELIST_ARRAY_MOD,   ONLY : NBC2SULF_MASS
+   USE NAMELIST_ARRAY_MOD,   ONLY : NBC2OC_MASS
    USE NAMELIST_ARRAY_MOD,   ONLY : NDUST2ALL_MASS
    USE NAMELIST_ARRAY_MOD,   ONLY : NSULFMASSRATIO
    USE MIX_MOD,              ONLY : NANG
@@ -191,7 +193,8 @@ MODULE DIAG_MOD
    CALL netCDF_Def_Dim( UInc, 'Spectra', NSPECTRA      , DIM_SPECTRA )
    CALL netCDF_Def_Dim( UInc, 'RH'     , NRH_LST       , DIM_RH      )
    CALL netCDF_Def_Dim( UInc, 'Sulfate', NSULF         , DIM_SULF    ) 
-   CALL netCDF_Def_Dim( UInc, 'BcMRatio',NBC2SULF_MASS , DIM_BC2SULF )
+   CALL netCDF_Def_Dim( UInc, 'BcSulfMRatio',NBC2SULF_MASS , DIM_BC2SULF )
+   CALL netCDF_Def_Dim( UInc, 'BcOCMRatio',NBC2OC_MASS , DIM_BC2OC )
    CALL netCDF_Def_Dim( UInc, 'DustMRatio', NDUST2ALL_MASS, DIM_DUST2ALL)   
    CALL netCDF_Def_Dim( UInc, 'Angle'  , NANG          , DIM_ANG     )  
    CALL netCDF_Def_Dim( UInc, 'Poly'   , NLGNDR        , DIM_LGNDR   )
@@ -270,12 +273,21 @@ MODULE DIAG_MOD
    CALL netCDF_Def_Attr( UInc, vID, TRIM(Lname), 'longname' )
    CALL netCDF_Def_Attr( UInc, vID, TRIM(Units), 'units'    )
 
-   ! BC mass ratio
+   ! BC sulfate mass ratio
    vID    = vID + 1
    LName  = 'BC to sulfate mass ratio'
    Units  = 'none'
    Dims1D = (/ DIM_BC2SULF /)
-   CALL netCDF_Def_Var( UInc, 'BcMassRatio', NF_FLOAT, 1, Dims1D, vID )
+   CALL netCDF_Def_Var( UInc, 'BcSulfateMassRatio', NF_FLOAT, 1, Dims1D, vID )
+   CALL netCDF_Def_Attr( UInc, vID, TRIM(Lname), 'longname' )
+   CALL netCDF_Def_Attr( UInc, vID, TRIM(Units), 'units'    )     
+
+   ! BC OC mass ratio
+   vID    = vID + 1
+   LName  = 'BC to OC mass ratio'
+   Units  = 'none'
+   Dims1D = (/ DIM_BC2OC /)
+   CALL netCDF_Def_Var( UInc, 'BcOcMassRatio', NF_FLOAT, 1, Dims1D, vID )
    CALL netCDF_Def_Attr( UInc, vID, TRIM(Lname), 'longname' )
    CALL netCDF_Def_Attr( UInc, vID, TRIM(Units), 'units'    )     
    
@@ -432,6 +444,63 @@ MODULE DIAG_MOD
    CALL netCDF_Def_Var( UInc, 'BcVOLUME', NF_FLOAT, 0, Dims0D, vID )
    CALL netCDF_Def_Attr( UInc, vID, TRIM(Lname), 'longname' )
    CALL netCDF_Def_Attr( UInc, vID, TRIM(Units), 'units'    )  
+   
+   ! Related to OC...
+   ! OC density
+   vID = vID + 1
+   LName = 'OC density'
+   Units = 'g/cm^3'
+   CALL netCDF_Def_Var( UInc, 'OcRho', NF_FLOAT, 0, Dims0D, vID )
+   CALL netCDF_Def_Attr( UInc, vID, TRIM(Lname), 'longname' )
+   CALL netCDF_Def_Attr( UInc, vID, TRIM(Units), 'units'    )
+   
+   ! MR: OC Real-part refractive index
+   vID = vID + 1
+   LName = 'OC Real-part refractive index'
+   Units = 'none'
+   CALL netCDF_Def_Var( UInc, 'OcMR', NF_FLOAT, 0, Dims0D, vID )
+   CALL netCDF_Def_Attr( UInc, vID, TRIM(Lname), 'longname' )
+   CALL netCDF_Def_Attr( UInc, vID, TRIM(Units), 'units'    )
+   
+   ! MI: OC Imag-part refractive index
+   vID = vID + 1
+   LName = 'OC Imaginary-part refractive index'
+   Units = 'none'
+   CALL netCDF_Def_Var( UInc, 'OcMI', NF_FLOAT, 0, Dims0D, vID )
+   CALL netCDF_Def_Attr( UInc, vID, TRIM(Lname), 'longname' )
+   CALL netCDF_Def_Attr( UInc, vID, TRIM(Units), 'units'    )
+ 
+   ! OC Effective radius
+   vID    = vID + 1
+   LName  = 'OC Effective radius'
+   Units  = 'um'
+   CALL netCDF_Def_Var( UInc, 'OcREFF', NF_FLOAT, 0, Dims0D, vID )
+   CALL netCDF_Def_Attr( UInc, vID, TRIM(Lname), 'longname' )
+   CALL netCDF_Def_Attr( UInc, vID, TRIM(Units), 'units'    )
+
+   ! OC Effective variance
+   vID    = vID + 1
+   LName  = 'OC Effective variance'
+   Units  = 'um'
+   CALL netCDF_Def_Var( UInc, 'OcVEFF', NF_FLOAT, 0, Dims0D, vID )
+   CALL netCDF_Def_Attr( UInc, vID, TRIM(Lname), 'longname' )
+   CALL netCDF_Def_Attr( UInc, vID, TRIM(Units), 'units'    )
+   
+   ! OC Surface area
+   vID    = vID + 1
+   LName  = 'OC Surface area'
+   Units  = 'um^2'
+   CALL netCDF_Def_Var( UInc, 'OcAREA', NF_FLOAT, 0, Dims0D, vID )
+   CALL netCDF_Def_Attr( UInc, vID, TRIM(Lname), 'longname' )
+   CALL netCDF_Def_Attr( UInc, vID, TRIM(Units), 'units'    )
+   
+   ! OC Volume
+   vID    = vID + 1
+   LName  = 'BC Volume'
+   Units  = 'um^3'
+   CALL netCDF_Def_Var( UInc, 'OcVOLUME', NF_FLOAT, 0, Dims0D, vID )
+   CALL netCDF_Def_Attr( UInc, vID, TRIM(Lname), 'longname' )
+   CALL netCDF_Def_Attr( UInc, vID, TRIM(Units), 'units'    )  
      
    ! Related to dust...   
    ! MR: Dust real-part refractive index
@@ -526,7 +595,7 @@ MODULE DIAG_MOD
    CALL netCDF_Def_Attr( UInc, vID, TRIM(Lname), 'longname' )
    CALL netCDF_Def_Attr( UInc, vID, TRIM(Units), 'units'    ) 
 
-   ! scattering angle...
+   ! BC total volume...
    vID    = vID + 1
    LName  = 'BC total volume'
    Units  = 'none'
@@ -681,6 +750,92 @@ MODULE DIAG_MOD
    CALL netCDF_Def_Var( UInc, 'BcPHASE', NF_FLOAT, 2, Dims2D, vID )
    CALL netCDF_Def_Attr( UInc, vID, TRIM(Lname), 'longname' )
    CALL netCDF_Def_Attr( UInc, vID, TRIM(Units), 'units'    )   
+
+   !--------------------------------------------------------
+   ! parameters related organic carbon
+   ! Single scattering albedo - organic carbon
+   !--------------------------------------------------------
+   vID    = vID + 1
+   LName  = 'OC Single scattering albedo'
+   Units  = 'none'
+   Dims1D = (/ DIM_SPECTRA /)
+   CALL netCDF_Def_Var( UInc, 'OcSSA', NF_FLOAT, 1, Dims1D, vID )
+   CALL netCDF_Def_Attr( UInc, vID, TRIM(Lname), 'longname' )
+   CALL netCDF_Def_Attr( UInc, vID, TRIM(Units), 'units'    )
+   
+   ! Asymmetric factor - organic carbon
+   vID    = vID + 1
+   LName  = 'OC Asymmetric factor'
+   Units  = 'none'
+   Dims1D = (/ DIM_SPECTRA /)
+   CALL netCDF_Def_Var( UInc, 'OcASY', NF_FLOAT, 1, Dims1D, vID )
+   CALL netCDF_Def_Attr( UInc, vID, TRIM(Lname), 'longname' )
+   CALL netCDF_Def_Attr( UInc, vID, TRIM(Units), 'units'    )
+
+   ! Extinction coefficient - organic carbon
+   vID    = vID + 1
+   LName  = 'OC Extinction cross section'
+   Units  = 'none'
+   Dims1D = (/ DIM_SPECTRA /)
+   CALL netCDF_Def_Var( UInc, 'OcCEXT', NF_FLOAT, 1, Dims1D, vID )
+   CALL netCDF_Def_Attr( UInc, vID, TRIM(Lname), 'longname' )
+   CALL netCDF_Def_Attr( UInc, vID, TRIM(Units), 'units'    )
+
+   ! Scattering cross sections - organic carbon
+   vID    = vID + 1
+   LName  = 'OC Scattering cross section'
+   Units  = 'none'
+   Dims1D = (/ DIM_SPECTRA /)
+   CALL netCDF_Def_Var( UInc, 'OcCSCA', NF_FLOAT, 1, Dims1D, vID )
+   CALL netCDF_Def_Attr( UInc, vID, TRIM(Lname), 'longname' )
+   CALL netCDF_Def_Attr( UInc, vID, TRIM(Units), 'units'    )  
+
+   ! Extinction coefficient - organic carbon
+   vID    = vID + 1
+   LName  = 'OC Extinction coefficient'
+   Units  = 'none'
+   Dims1D = (/ DIM_SPECTRA /)
+   CALL netCDF_Def_Var( UInc, 'OcEXTEFFCY', NF_FLOAT, 1, Dims1D, vID )
+   CALL netCDF_Def_Attr( UInc, vID, TRIM(Lname), 'longname' )
+   CALL netCDF_Def_Attr( UInc, vID, TRIM(Units), 'units'    )   
+      
+   ! Mass extinction coefficient - organic carbon
+   vID    = vID + 1
+   LName  = 'OC Mass extinction coefficient'
+   Units  = 'none'
+   Dims1D = (/ DIM_SPECTRA /)
+   CALL netCDF_Def_Var( UInc, 'OcMEXTEFFCY', NF_FLOAT, 1, Dims1D, vID )
+   CALL netCDF_Def_Attr( UInc, vID, TRIM(Lname), 'longname' )
+   CALL netCDF_Def_Attr( UInc, vID, TRIM(Units), 'units'    )   
+
+   ! Hemispheric backscattering - organic carbon
+   vID    = vID + 1
+   LName  = 'OC Hemispheric backscattering'
+   Units  = 'none'
+   Dims1D = (/ DIM_SPECTRA /)
+   CALL netCDF_Def_Var( UInc, 'OcHBSCAT', NF_FLOAT, 1, Dims1D, vID )
+   CALL netCDF_Def_Attr( UInc, vID, TRIM(Lname), 'longname' )
+   CALL netCDF_Def_Attr( UInc, vID, TRIM(Units), 'units'    )  
+
+   ! Extinction to back scattering ratio - organic carbon
+   vID    = vID + 1
+   LName  = 'OC Extinction to back scattering ratio'
+   Units  = 'none'
+   Dims1D = (/ DIM_SPECTRA /)
+   CALL netCDF_Def_Var( UInc, 'OcEXTTOBCARATIO', NF_FLOAT, 1, Dims1D, vID )
+   CALL netCDF_Def_Attr( UInc, vID, TRIM(Lname), 'longname' )
+   CALL netCDF_Def_Attr( UInc, vID, TRIM(Units), 'units'    )
+
+   ! Phase function - organic carbon
+   vID    = vID + 1
+   LName  = 'OC Phase function'
+   Units  = 'none'
+   Dims2D = (/ DIM_SPECTRA, DIM_ANG /)
+   CALL netCDF_Def_Var( UInc, 'OcPHASE', NF_FLOAT, 2, Dims2D, vID )
+   CALL netCDF_Def_Attr( UInc, vID, TRIM(Lname), 'longname' )
+   CALL netCDF_Def_Attr( UInc, vID, TRIM(Units), 'units'    )   
+
+
 
    !--------------------------------------------------------
    ! Parameters related to dust...
@@ -946,6 +1101,9 @@ MODULE DIAG_MOD
    USE NETCDF_MOD
    USE NAMELIST_ARRAY_MOD, ONLY : LEXTERNAL_MIX
    USE NAMELIST_ARRAY_MOD, ONLY : LINTERNAL_MIX
+   USE NAMELIST_ARRAY_MOD, ONLY : LSULFATE_SHELL
+   USE NAMELIST_ARRAY_MOD, ONLY : LOC_SHELL
+   
    !
    IMPLICIT NONE
    !
@@ -953,12 +1111,20 @@ MODULE DIAG_MOD
    !
    INTEGER             :: UInc
 
+   ! determine if it's OC shell or Sulfate shell
+   IF (LOC_SHELL) THEN
+       Dims4D = (/ DIM_SPECTRA, DIM_RH, DIM_DUST2ALL, DIM_BC2OC /)
+       Dims5D = (/ DIM_SPECTRA, DIM_RH, DIM_DUST2ALL, DIM_BC2OC, DIM_ANG /) 
+   ELSEIF (LSULFATE_SHELL) THEN
+       Dims4D = (/ DIM_SPECTRA, DIM_RH, DIM_DUST2ALL, DIM_BC2SULF /)
+       Dims5D = (/ DIM_SPECTRA, DIM_RH, DIM_DUST2ALL, DIM_BC2SULF, DIM_ANG /)
+   ENDIF
+
    IF (LEXTERNAL_MIX) THEN
       ! External mixing Extinction cross section
       vID    = vID + 1
       LName  = 'External mixing Extinction cross section'
       Units  = 'none'
-      Dims4D = (/ DIM_SPECTRA, DIM_RH, DIM_DUST2ALL, DIM_BC2SULF /)
       CALL netCDF_Def_Var( UInc, 'ExMixCEXT', NF_FLOAT, 4, Dims4D, vID )
       CALL netCDF_Def_Attr( UInc, vID, TRIM(Lname), 'longname' )
       CALL netCDF_Def_Attr( UInc, vID, TRIM(Units), 'units'    )   
@@ -967,7 +1133,6 @@ MODULE DIAG_MOD
       vID    = vID + 1
       LName  = 'External mixing Single scattering albedo'
       Units  = 'none'
-      Dims4D = (/ DIM_SPECTRA, DIM_RH, DIM_DUST2ALL, DIM_BC2SULF /)
       CALL netCDF_Def_Var( UInc, 'ExMixSSA', NF_FLOAT, 4, Dims4D, vID )
       CALL netCDF_Def_Attr( UInc, vID, TRIM(Lname), 'longname' )
       CALL netCDF_Def_Attr( UInc, vID, TRIM(Units), 'units'    )
@@ -976,7 +1141,6 @@ MODULE DIAG_MOD
       vID    = vID + 1
       LName  = 'External mixing Effective radius'
       Units  = 'um'
-      Dims4D = (/ DIM_SPECTRA, DIM_RH, DIM_DUST2ALL, DIM_BC2SULF /)
       CALL netCDF_Def_Var( UInc, 'ExMixREFF', NF_FLOAT, 4, Dims4D, vID )
       CALL netCDF_Def_Attr( UInc, vID, TRIM(Lname), 'longname' )
       CALL netCDF_Def_Attr( UInc, vID, TRIM(Units), 'units'    )
@@ -986,7 +1150,6 @@ MODULE DIAG_MOD
       vID    = vID + 1
       LName  = 'External mixing Total Number'
       Units  = 'none'
-      Dims4D = (/ DIM_SPECTRA, DIM_RH, DIM_DUST2ALL, DIM_BC2SULF /)
       CALL netCDF_Def_Var( UInc, 'ExMixNUM', NF_FLOAT, 4, Dims4D, vID )
       CALL netCDF_Def_Attr( UInc, vID, TRIM(Lname), 'longname' )
       CALL netCDF_Def_Attr( UInc, vID, TRIM(Units), 'units'    )
@@ -995,7 +1158,6 @@ MODULE DIAG_MOD
       vID    = vID + 1
       LName  = 'External mixing Phase Function'
       Units  = 'none'
-      Dims5D = (/ DIM_SPECTRA, DIM_RH, DIM_DUST2ALL, DIM_BC2SULF, DIM_ANG /)
       CALL netCDF_Def_Var( UInc, 'ExMixPHASE', NF_FLOAT, 5, Dims5D, vID )
       CALL netCDF_Def_Attr( UInc, vID, TRIM(Lname), 'longname' )
       CALL netCDF_Def_Attr( UInc, vID, TRIM(Units), 'units'    )
@@ -1008,7 +1170,6 @@ MODULE DIAG_MOD
       vID    = vID + 1
       LName  = 'Internal mixing Extinction cross section'
       Units  = 'none'
-      Dims4D = (/ DIM_SPECTRA, DIM_RH, DIM_DUST2ALL, DIM_BC2SULF /)
       CALL netCDF_Def_Var( UInc, 'InMixCEXT', NF_FLOAT, 4, Dims4D, vID )
       CALL netCDF_Def_Attr( UInc, vID, TRIM(Lname), 'longname' )
       CALL netCDF_Def_Attr( UInc, vID, TRIM(Units), 'units'    )   
@@ -1017,7 +1178,6 @@ MODULE DIAG_MOD
       vID    = vID + 1
       LName  = 'Internal mixing Single scattering albedo'
       Units  = 'none'
-      Dims4D = (/ DIM_SPECTRA, DIM_RH, DIM_DUST2ALL, DIM_BC2SULF /)
       CALL netCDF_Def_Var( UInc, 'InMixSSA', NF_FLOAT, 4, Dims4D, vID )
       CALL netCDF_Def_Attr( UInc, vID, TRIM(Lname), 'longname' )
       CALL netCDF_Def_Attr( UInc, vID, TRIM(Units), 'units'    )
@@ -1026,7 +1186,6 @@ MODULE DIAG_MOD
       vID    = vID + 1
       LName  = 'Internal mixing Effective radius'
       Units  = 'um'
-      Dims4D = (/ DIM_SPECTRA, DIM_RH, DIM_DUST2ALL, DIM_BC2SULF /)
       CALL netCDF_Def_Var( UInc, 'InMixREFF', NF_FLOAT, 4, Dims4D, vID )
       CALL netCDF_Def_Attr( UInc, vID, TRIM(Lname), 'longname' )
       CALL netCDF_Def_Attr( UInc, vID, TRIM(Units), 'units'    )
@@ -1036,7 +1195,6 @@ MODULE DIAG_MOD
       vID    = vID + 1
       LName  = 'Internal mixing Total Number'
       Units  = 'none'
-      Dims4D = (/ DIM_SPECTRA, DIM_RH, DIM_DUST2ALL, DIM_BC2SULF /)
       CALL netCDF_Def_Var( UInc, 'InMixNUM', NF_FLOAT, 4, Dims4D, vID )
       CALL netCDF_Def_Attr( UInc, vID, TRIM(Lname), 'longname' )
       CALL netCDF_Def_Attr( UInc, vID, TRIM(Units), 'units'    )
@@ -1045,7 +1203,6 @@ MODULE DIAG_MOD
       vID    = vID + 1
       LName  = 'Internal mixing Phase Function'
       Units  = 'none'
-      Dims5D = (/ DIM_SPECTRA, DIM_RH, DIM_DUST2ALL, DIM_BC2SULF, DIM_ANG /)
       CALL netCDF_Def_Var( UInc, 'InMixPHASE', NF_FLOAT, 5, Dims5D, vID )
       CALL netCDF_Def_Attr( UInc, vID, TRIM(Lname), 'longname' )
       CALL netCDF_Def_Attr( UInc, vID, TRIM(Units), 'units'    )
@@ -1070,6 +1227,7 @@ MODULE DIAG_MOD
    !
    ! Arguments:
    INTEGER, INTENT(IN)        :: UInc
+
    
    IF ( ( RHID == 1 ) .AND. ( LAMDAID == 1 ).AND. ( DUSTID == 1 ) .AND. ( BCID == 1 ) ) THEN
       CALL WRITE_DIAG01(UInc)
@@ -1082,7 +1240,6 @@ MODULE DIAG_MOD
    IF (( LAMDAID == 1 ) .AND. ( DUSTID == 1 ) .AND. ( BCID == 1 )) THEN
       CALL WRITE_DIAG03(UInc)
    END IF
-   
      
    IF ( ( DUSTID == 1 ) .AND. ( BCID == 1 ) )  THEN
       CALL WRITE_DIAG04(UInc)
@@ -1103,9 +1260,11 @@ MODULE DIAG_MOD
    USE NAMELIST_ARRAY_MOD, ONLY : NRH_LST, RH_LST
    USE NAMELIST_ARRAY_MOD, ONLY : NDUST2ALL_MASS, DUST2ALL_MASS   
    USE NAMELIST_ARRAY_MOD, ONLY : NBC2SULF_MASS,  BC2SULF_MASS
-   USE NAMELIST_ARRAY_MOD, ONLY : BCRHO,          DUSTRHO    
+   USE NAMELIST_ARRAY_MOD, ONLY : NBC2OC_MASS,  BC2OC_MASS
+   USE NAMELIST_ARRAY_MOD, ONLY : BCRHO, OCRHO, DUSTRHO    
    USE NAMELIST_ARRAY_MOD, ONLY : DISTPAR
    USE NAMELIST_ARRAY_MOD, ONLY : RMRI
+   USE NAMELIST_ARRAY_MOD, ONLY : LSULFATE_SHELL, LOC_SHELL
    
    USE SPECTRA_MOD,        ONLY : NSPECTRA
    USE SPECTRA_MOD,        ONLY : LAMDAS, WAVENUMS  
@@ -1133,6 +1292,7 @@ MODULE DIAG_MOD
 
  	
    USE MIX_MOD,			   ONLY : OPT_BC
+   USE MIX_MOD,			   ONLY : OPT_OC
    USE MIX_MOD,			   ONLY : OPT_DUST
    USE MIX_MOD, 		   ONLY : NANG
    USE MIX_MOD,			   ONLY : VBC
@@ -1163,7 +1323,10 @@ MODULE DIAG_MOD
    CALL netCDF_Write_Var( UInc, REAL(SULF_MASSRATIO_LST(1:NSULFMASSRATIO),ncKind), 'SulfMassRatio',1, NSULFMASSRATIO)
 
    ! BC to sulfate mass ratio
-   CALL netCDF_Write_Var( UInc, REAL(BC2SULF_MASS,ncKind), 'BcMassRatio', 1, NBC2SULF_MASS)
+   CALL netCDF_Write_Var( UInc, REAL(BC2SULF_MASS,ncKind), 'BcSulfateMassRatio', 1, NBC2SULF_MASS)
+   
+   ! BC to OC mass ratio
+   CALL netCDF_Write_Var( UInc, REAL(BC2OC_MASS,ncKind), 'BcOcMassRatio', 1, NBC2OC_MASS)
    
    ! Dust to all mass ratio
    CALL netCDF_Write_Var( UInc, REAL(DUST2ALL_MASS,ncKind), 'DustMassRatio', 1, NDUST2ALL_MASS)  
@@ -1199,9 +1362,18 @@ MODULE DIAG_MOD
    CALL netCDF_Write_Var( UInc, REAL(OPT_BC%AREA,ncKind),   'BcAREA')
    CALL netCDF_Write_Var( UInc, REAL(OPT_BC%VOLUME,ncKind), 'BcVOLUME')
    
+   ! OC...
+   CALL netCDF_Write_Var( UInc, REAL(RMRI(1,3),ncKind),     'OcMR')
+   CALL netCDF_Write_Var( UInc, REAL(RMRI(2,3),ncKind),     'OcMI')
+   CALL netCDF_Write_Var( UInc, REAL(OCRHO,ncKind),         'OcRho')
+   CALL netCDF_Write_Var( UInc, REAL(OPT_OC%REFF,ncKind),   'OcREFF')
+   CALL netCDF_Write_Var( UInc, REAL(OPT_OC%VEFF,ncKind),   'OcVEFF')
+   CALL netCDF_Write_Var( UInc, REAL(OPT_OC%AREA,ncKind),   'OcAREA')
+   CALL netCDF_Write_Var( UInc, REAL(OPT_OC%VOLUME,ncKind), 'OcVOLUME')
+   
    ! Dust...
-   CALL netCDF_Write_Var( UInc, REAL(RMRI(1,3),ncKind), 'DustMR')
-   CALL netCDF_Write_Var( UInc, REAL(RMRI(1,3),ncKind), 'DustMI')
+   CALL netCDF_Write_Var( UInc, REAL(RMRI(1,4),ncKind), 'DustMR')
+   CALL netCDF_Write_Var( UInc, REAL(RMRI(2,4),ncKind), 'DustMI')
    CALL netCDF_Write_Var( UInc, REAL(DUSTRHO,ncKind), 'DustRho')
    CALL netCDF_Write_Var( UInc, REAL(OPT_DUST%REFF,ncKind),   'DustREFF')
    CALL netCDF_Write_Var( UInc, REAL(OPT_DUST%VEFF,ncKind),   'DustVEFF')
@@ -1227,6 +1399,8 @@ MODULE DIAG_MOD
    ! BC total volume
    CALL netCDF_Write_Var( UInc, VBC, 'BcTotalV', 1, NBC2SULF_MASS)   
 
+   IF (LSULFATE_SHELL) THEN ! only output the following if sulfate is shell
+   
    ! Sulf to BC radius ratio
    st2D(:) = 1
    ct2D = (/ NBC2SULF_MASS, NRH_LST /)
@@ -1247,6 +1421,8 @@ MODULE DIAG_MOD
    ct2D = (/ NBC2SULF_MASS, NRH_LST /)
    CALL netCDF_Write_Var( UInc, REAL(SULFBCRHO, ncKind),  'SulfBcRHO', st2D, ct2D)
    
+   ENDIF
+      
    RETURN
    !
    END SUBROUTINE WRITE_DIAG01
@@ -1260,6 +1436,7 @@ MODULE DIAG_MOD
    USE SPECTRA_MOD,        ONLY : NSPECTRA
    USE SPECTRA_MOD,        ONLY : LAMDAS, WAVENUMS  
    USE MIX_MOD,			   ONLY : OPT_BC
+   USE MIX_MOD,			   ONLY : OPT_OC
    USE MIX_MOD,			   ONLY : OPT_DUST
    USE MIX_MOD, 		   ONLY : NANG
    USE MIX_MOD,            ONLY : LAMDAID
@@ -1332,6 +1509,62 @@ MODULE DIAG_MOD
    st2D = (/LAMDAID, 1/)
    ct2D = (/1, NANG/)
    CALL netCDF_Write_Var( UInc, tmpArr2D, 'BcPHASE', st2D, ct2D)
+   DEALLOCATE( tmpArr2D ) 
+   
+   ! OC Single scattering albedo
+   ALLOCATE( tmpArr1D(1) )
+   tmpArr1D(1) = OPT_OC%SSA
+   CALL netCDF_Write_Var( UInc, tmpArr1D, 'OcSSA', st1D, ct1D)
+   DEALLOCATE( tmpArr1D )
+   
+   ! OC Asymmetric factor
+   ALLOCATE( tmpArr1D(1) )
+   tmpArr1D(1) = OPT_OC%ASY
+   CALL netCDF_Write_Var( UInc, tmpArr1D, 'OcASY', st1D, ct1D)
+   DEALLOCATE( tmpArr1D )
+   
+   ! OC Extinction cross section
+   ALLOCATE( tmpArr1D(1) )
+   tmpArr1D(1) = OPT_OC%CEXT
+   CALL netCDF_Write_Var( UInc, tmpArr1D, 'OcCEXT', st1D, ct1D)
+   DEALLOCATE( tmpArr1D )
+   
+   ! OC Scattering cross section
+   ALLOCATE( tmpArr1D(1) )
+   tmpArr1D(1) = OPT_OC%CSCA
+   CALL netCDF_Write_Var( UInc, tmpArr1D, 'OcCSCA', st1D, ct1D)
+   DEALLOCATE( tmpArr1D )   
+
+   ! OC Extinction coefficient
+   ALLOCATE( tmpArr1D(1) )
+   tmpArr1D(1) = OPT_OC%EXTEFFCY
+   CALL netCDF_Write_Var( UInc, tmpArr1D, 'OcEXTEFFCY', st1D, ct1D)
+   DEALLOCATE( tmpArr1D )   
+
+   ! OC Mass extinction coefficient
+   ALLOCATE( tmpArr1D(1) )
+   tmpArr1D(1) = OPT_OC%MEXTEFFCY
+   CALL netCDF_Write_Var( UInc, tmpArr1D, 'OcMEXTEFFCY', st1D, ct1D)
+   DEALLOCATE( tmpArr1D ) 
+
+   ! OC Hemispheric backscattering
+   ALLOCATE( tmpArr1D(1) )
+   tmpArr1D(1) = OPT_OC%HBSCAT
+   CALL netCDF_Write_Var( UInc, tmpArr1D, 'OcHBSCAT', st1D, ct1D)
+   DEALLOCATE( tmpArr1D ) 
+
+   ! OC Extinction to back scattering ratio
+   ALLOCATE( tmpArr1D(1) )
+   tmpArr1D(1) = OPT_OC%EXTTOBCARATIO
+   CALL netCDF_Write_Var( UInc, tmpArr1D, 'OcEXTTOBCARATIO', st1D, ct1D)
+   DEALLOCATE( tmpArr1D ) 
+   
+   ! OC Phase function
+   ALLOCATE( tmpArr2D(1, NANG) )
+   tmpArr2D(1, 1: NANG) = OPT_OC%PHASE(1: NANG)
+   st2D = (/LAMDAID, 1/)
+   ct2D = (/1, NANG/)
+   CALL netCDF_Write_Var( UInc, tmpArr2D, 'OcPHASE', st2D, ct2D)
    DEALLOCATE( tmpArr2D ) 
 
    ! Dust...
@@ -1667,7 +1900,7 @@ MODULE DIAG_MOD
    
 
    RETURN
-   !
+   
    END SUBROUTINE WRITE_DIAG05
 !------------------------------------------------------------------------------
 !

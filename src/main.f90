@@ -19,7 +19,8 @@
    USE DIAG_MOD,           ONLY : CLOSEUP_DIAG
    
    USE NAMELIST_ARRAY_MOD, ONLY : NRH_LST, RH_LST
-   USE NAMELIST_ARRAY_MOD, ONLY : NBC2SULF_MASS, NDUST2ALL_MASS
+   USE NAMELIST_ARRAY_MOD, ONLY : LSULFATE_SHELL, LOC_SHELL
+   USE NAMELIST_ARRAY_MOD, ONLY : NBC2SULF_MASS, NBC2OC_MASS, NDUST2ALL_MASS
    USE SPECTRA_MOD,        ONLY : NSPECTRA, LAMDAS      
    USE MIX_MOD,            ONLY : BCID
    USE MIX_MOD,            ONLY : DUSTID
@@ -29,11 +30,11 @@
    USE NAMELIST_ARRAY_MOD, ONLY : DISTPAR
 
    INTEGER              :: I, J, K, L
+   INTEGER              :: NBCLOOP
    INTEGER              :: UInc    
    WRITE(6, 99) TRIM(codeVersion)
    
 
-   
    CALL READ_NAMELIST
    
    CALL GET_SPECTRA
@@ -53,6 +54,13 @@
    CALL DEFINE_DIAG( UInc )
    
    
+   ! determine if it's OC shell or Sulfate shell
+   IF (LOC_SHELL) THEN
+       NBCLOOP = NBC2OC_MASS   
+   ELSEIF (LSULFATE_SHELL) THEN
+       NBCLOOP = NBC2SULF_MASS
+   ENDIF
+      
    ! we have several loops, spectrum, rh, dust, bc 
    LP_SPECTRA: DO I = 1, NSPECTRA
    
@@ -60,7 +68,6 @@
       
       LP_RH: DO J = 1, NRH_LST
       
-         
          RHID = J
          
          ! in different lamda ans RH we need to calculate the optical 
@@ -70,16 +77,15 @@
             LP_DUST: DO K = 1, NDUST2ALL_MASS
             
                DUSTID = K
-               
-               LP_BC: DO L = 1, NBC2SULF_MASS
+                              
+               LP_BC: DO L = 1, NBCLOOP
             
                   BCID   = L
-                  
+                                    
                   CALL MIXING
                   CALL WRITE_DIAG(UInc)
  
                END DO LP_BC
-            
             
             END DO LP_DUST
          
@@ -87,6 +93,7 @@
       
    END DO LP_SPECTRA
    
+      
    CALL CLOSEUP_DIAG( UInc )
    ! Screen print to indicate the complete running
    WRITE(6,'(/,A)') REPEAT( '*', 79 )      
